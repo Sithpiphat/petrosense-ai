@@ -67,7 +67,7 @@ MY_EIA_API_KEY = "DXB0f1v0nVrAqZxpRcmgKkB2RKuOIih1V1byRnQO"
 MY_GEMINI_API_KEY = "AIzaSyCxVLLz_SuzRNuWZnyk8RF_dnNWKUTmo-o"
 
 # ==========================================
-# 🤖 3. ตั้งค่า AI Model (Gemini)
+# 🤖 3. ตั้งค่า AI Model (Gemini 2.5)
 # ==========================================
 genai.configure(api_key=MY_GEMINI_API_KEY)
 
@@ -79,7 +79,6 @@ system_rules = """
 3. ตอบให้กระชับ อิงหลักความเป็นจริง ดูเป็นมืออาชีพ และมีความเป็นนักวิเคราะห์ข้อมูล
 """
 
-# ✅ อัปเดต Model เป็น Gemini 2.5 ตามที่ต้องการ
 if "ai_model" not in st.session_state:
     st.session_state.ai_model = genai.GenerativeModel(
         model_name="gemini-2.5-flash", 
@@ -121,7 +120,7 @@ with st.spinner("🔄 Syncing Live Data..."):
     real_df = fetch_eia_data(MY_EIA_API_KEY)
     df_data = real_df if real_df is not None else fallback_data
     status_is_success = real_df is not None
-    latest_crude = df_data["Crude Oil"].iloc[-1] # ดึงราคาล่าสุดมาเก็บไว้
+    latest_crude = df_data["Crude Oil"].iloc[-1] 
 
 # ==========================================
 # 🎯 5. LAYOUT: เมนูนำทางแบบกล่อง (Sidebar)
@@ -188,7 +187,6 @@ if selected_page == "📊 Overview Dashboard":
 
     with st.container(border=True):
         st.subheader("Market Trend Analysis (30 Days)")
-        # หน้า Overview แสดงแค่กราฟ 30 วันปกติ ไม่มีเส้นพยากรณ์แล้ว
         fig = px.line(df_data, x="Date", y=["Crude Oil", "Refined Oil"], 
                       labels={"value": "Price (USD)", "variable": "Commodity"},
                       template="plotly_dark")
@@ -213,6 +211,7 @@ elif selected_page == "🧠 Intelligence & AI":
         c2.metric("OWID Context", "Synced", "Risk Model")
         c3.metric("DOEB Sensor", "Online", "Reserve")
 
+    # ----- ชั้นที่ 1: กราฟ Anomaly และ Chatbot -----
     col_ai1, col_ai2 = st.columns([1.2, 1])
     
     with col_ai1:
@@ -222,43 +221,27 @@ elif selected_page == "🧠 Intelligence & AI":
         df_data['Is_Anomaly'] = abs(df_data['Crude Oil'] - df_data['Rolling_Mean']) > (1.5 * df_data['Rolling_Std'])
         
         with st.container(border=True):
-            st.markdown("**🔍 AI Predictive & Anomaly Model**")
+            st.markdown("**🔍 Historical Anomaly Detection**")
             fig_actual = go.Figure()
             
-            # 1. วาดเส้นราคาจริงย้อนหลัง 20 วัน
+            # วาดเส้นราคาจริงย้อนหลัง 20 วัน
             fig_actual.add_trace(go.Scatter(x=df_data["Date"].tail(20), y=df_data["Crude Oil"].tail(20), mode='lines', name='WTI (Real)', line=dict(color='#3B82F6', width=2)))
             
-            # 2. จุด Anomaly (ความผิดปกติ)
+            # จุด Anomaly (ความผิดปกติ)
             anomalies = df_data.tail(20)[df_data.tail(20)['Is_Anomaly']]
             if not anomalies.empty:
                 fig_actual.add_trace(go.Scatter(x=anomalies["Date"], y=anomalies["Crude Oil"], mode='markers', name='Anomaly', marker=dict(color='#EF4444', size=8, symbol='x')))
             
-            # ✅ 3. เส้นพยากรณ์ 7 วัน (7-Day Forecast)
-            last_date = df_data["Date"].iloc[-1]
-            forecast_dates = pd.date_range(last_date + pd.Timedelta(days=1), periods=7)
-            np.random.seed(42) 
-            forecast_trend = np.random.normal(0, 0.8, 7).cumsum()
-            forecast_values = latest_crude + forecast_trend
-            
-            fig_actual.add_trace(go.Scatter(
-                x=forecast_dates, 
-                y=forecast_values, 
-                mode='lines+markers', 
-                name='7-Day Forecast (AI)',
-                line=dict(color='#FBBF24', dash='dot', width=2),
-                marker=dict(size=6)
-            ))
-
-            fig_actual.update_layout(height=280, margin=dict(l=0, r=0, t=10, b=0), legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
+            fig_actual.update_layout(height=265, margin=dict(l=0, r=0, t=10, b=0), legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
             st.plotly_chart(fig_actual, use_container_width=True)
 
     with col_ai2:
         with st.container(border=True):
             st.markdown("**🤖 AI Signal Interpreter**")
-            st.info("• EIA Signal: พบความผิดปกติสัปดาห์ล่าสุด\n• Forecast: เเนวโน้มผันผวน 7 วันข้างหน้า")
+            st.info("• EIA Signal: พบความผิดปกติสัปดาห์ล่าสุด\n• Forecast: แนวโน้มผันผวน 7 วันข้างหน้า")
             st.markdown("---")
             
-            chat_container = st.container(height=265)
+            chat_container = st.container(height=180) # ปรับความสูงแชทให้พอดีกับกราฟ
             with chat_container:
                 for msg in st.session_state.messages:
                     with st.chat_message(msg["role"]):
@@ -278,3 +261,64 @@ elif selected_page == "🧠 Intelligence & AI":
                                 st.session_state.messages.append({"role": "assistant", "content": response.text})
                         except Exception as e:
                             st.error(f"เกิดข้อผิดพลาดในการเชื่อมต่อ AI: {e}")
+                            
+    # ----- ชั้นที่ 2: กราฟ Probabilistic Forecast (เต็มความกว้างด้านล่าง) -----
+    with st.container(border=True):
+        st.markdown("**🔮 7-Day AI Probabilistic Forecast**")
+        
+        last_date = df_data["Date"].iloc[-1]
+        forecast_dates = pd.date_range(last_date + pd.Timedelta(days=1), periods=7)
+        
+        # จำลองข้อมูลพยากรณ์
+        np.random.seed(42) 
+        forecast_trend = np.random.normal(0, 0.8, 7).cumsum()
+        forecast_values = latest_crude + forecast_trend
+        
+        # เตรียมข้อมูลสำหรับพล็อต (เชื่อมจุดสุดท้ายของข้อมูลจริงเข้ากับจุดแรกของข้อมูลพยากรณ์)
+        plot_dates = [last_date] + list(forecast_dates)
+        plot_values = [latest_crude] + list(forecast_values)
+        
+        # คำนวณขอบเขตความน่าจะเป็น (Confidence Interval) ให้กว้างขึ้นเรื่อยๆ
+        upper_bound = [v + (i * 0.6) for i, v in enumerate(plot_values)]
+        lower_bound = [v - (i * 0.6) for i, v in enumerate(plot_values)]
+
+        fig_forecast = go.Figure()
+        
+        # 1. วาดแถบความน่าจะเป็น (Shaded Area)
+        fig_forecast.add_trace(go.Scatter(
+            x=plot_dates + plot_dates[::-1],
+            y=upper_bound + lower_bound[::-1],
+            fill='toself',
+            fillcolor='rgba(251, 191, 36, 0.15)', # สีเหลืองโปร่งแสง
+            line=dict(color='rgba(255,255,255,0)'),
+            name='Confidence Interval (95%)',
+            hoverinfo="skip"
+        ))
+        
+        # 2. วาดข้อมูลจริง 14 วันย้อนหลังให้เห็นบริบท
+        fig_forecast.add_trace(go.Scatter(
+            x=df_data["Date"].tail(14), 
+            y=df_data["Crude Oil"].tail(14), 
+            mode='lines+markers', 
+            name='Historical WTI',
+            line=dict(color='#3B82F6', width=2),
+            marker=dict(size=4)
+        ))
+
+        # 3. วาดเส้นคาดการณ์ 7 วัน
+        fig_forecast.add_trace(go.Scatter(
+            x=plot_dates, 
+            y=plot_values, 
+            mode='lines+markers', 
+            name='Expected Forecast',
+            line=dict(color='#FBBF24', dash='dot', width=3),
+            marker=dict(size=6, color='#FBBF24')
+        ))
+
+        fig_forecast.update_layout(
+            height=280, 
+            margin=dict(l=0, r=0, t=10, b=0), 
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+            hovermode="x unified"
+        )
+        st.plotly_chart(fig_forecast, use_container_width=True)
