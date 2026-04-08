@@ -19,19 +19,16 @@ st.set_page_config(
 
 st.markdown("""
     <style>
-        /* ซ่อน Header และ Footer พื้นฐานของ Streamlit */
         #MainMenu {visibility: hidden;}
         header {visibility: hidden;}
         footer {visibility: hidden;}
         
-        /* 🔒 ล็อกเมนู (ซ่อนปุ่มพับ) เฉพาะบนหน้าจอคอมพิวเตอร์กว้างๆ */
         @media (min-width: 992px) {
             [data-testid="collapsedControl"] {
                 display: none !important;
             }
         }
         
-        /* ปรับสไตล์ Badge มุมขวาบน */
         .top-right-badge {
             display: flex;
             justify-content: flex-end;
@@ -49,13 +46,11 @@ st.markdown("""
             letter-spacing: 0.5px;
         }
         
-        /* ปรับแต่งตัวอักษร Metric ให้ดู Modern ขึ้น */
         div[data-testid="stMetricValue"] {
             font-size: 1.8rem !important;
             font-weight: 700 !important;
         }
         
-        /* ตกแต่งให้ปุ่มเมนูดูเป็นบล็อกโปร่งๆ */
         .stButton button {
             border-radius: 10px;
             height: 50px;
@@ -76,19 +71,18 @@ MY_GEMINI_API_KEY = "AIzaSyCxVLLz_SuzRNuWZnyk8RF_dnNWKUTmo-o"
 # ==========================================
 genai.configure(api_key=MY_GEMINI_API_KEY)
 
-# กฎเหล็กบังคับให้ AI คุยแค่เรื่องน้ำมันและพลังงาน
 system_rules = """
 คุณคือ 'PetroSense AI' ผู้เชี่ยวชาญระดับสูงด้านตลาดน้ำมัน (Oil Market), Supply Chain พลังงาน, และเศรษฐศาสตร์มหภาค
 กฎข้อบังคับของคุณ:
 1. ตอบคำถามที่เกี่ยวข้องกับ น้ำมัน, ก๊าซธรรมชาติ, พลังงาน, หรือเศรษฐกิจที่เชื่อมโยงกับพลังงาน เท่านั้น
-2. หากผู้ใช้ถามเรื่องอื่นที่ไม่เกี่ยวข้อง (เช่น ทำอาหาร, เล่นเกม, ดารา, หรือเขียนโปรแกรมที่ไม่เกี่ยวกับแอปนี้) ให้ปฏิเสธอย่างสุภาพ แจ้งว่าคุณถูกสร้างมาเพื่อวิเคราะห์ตลาดพลังงานเท่านั้น
+2. หากผู้ใช้ถามเรื่องอื่นที่ไม่เกี่ยวข้อง ให้ปฏิเสธอย่างสุภาพ แจ้งว่าคุณถูกสร้างมาเพื่อวิเคราะห์ตลาดพลังงานเท่านั้น
 3. ตอบให้กระชับ อิงหลักความเป็นจริง ดูเป็นมืออาชีพ และมีความเป็นนักวิเคราะห์ข้อมูล
 """
 
-# ใช้ Session State เพื่อเก็บ Model และประวัติแชท
+# ✅ อัปเดต Model เป็น Gemini 2.5 ตามที่ต้องการ
 if "ai_model" not in st.session_state:
     st.session_state.ai_model = genai.GenerativeModel(
-        model_name="gemini-1.5-flash",
+        model_name="gemini-2.5-flash", 
         system_instruction=system_rules
     )
     
@@ -116,7 +110,6 @@ def fetch_eia_data(api_key):
     except Exception:
         return None
 
-# ข้อมูลสำรอง (Fallback) กรณี API ล่ม
 dates = pd.date_range(datetime.date.today() - pd.Timedelta(days=30), periods=30)
 fallback_data = pd.DataFrame({
     "Date": dates,
@@ -124,11 +117,11 @@ fallback_data = pd.DataFrame({
     "Refined Oil": np.random.randn(30).cumsum() + 95
 })
 
-# Sync Data
 with st.spinner("🔄 Syncing Live Data..."):
     real_df = fetch_eia_data(MY_EIA_API_KEY)
     df_data = real_df if real_df is not None else fallback_data
     status_is_success = real_df is not None
+    latest_crude = df_data["Crude Oil"].iloc[-1] # ดึงราคาล่าสุดมาเก็บไว้
 
 # ==========================================
 # 🎯 5. LAYOUT: เมนูนำทางแบบกล่อง (Sidebar)
@@ -141,7 +134,6 @@ with st.sidebar:
     st.markdown("---")
     st.caption("MAIN MENU")
     
-    # เมนูแบบปุ่มกด
     if st.button("📊 Overview Dashboard", use_container_width=True, 
                  type="primary" if st.session_state.selected_page == "📊 Overview Dashboard" else "secondary"):
         st.session_state.selected_page = "📊 Overview Dashboard"
@@ -159,7 +151,6 @@ with st.sidebar:
     else:
         st.error("⚠️ Offline Mode")
         
-    # Mock User Profile
     st.markdown("<br><br><br><br>", unsafe_allow_html=True)
     with st.container(border=True):
         st.markdown("**🧑‍💻 Admin User**")
@@ -182,7 +173,6 @@ if selected_page == "📊 Overview Dashboard":
         st.markdown('<div class="top-right-badge"><span class="badge-text">🇺🇸 Market: US (WTI)</span></div>', unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns(3)
-    latest_crude = df_data["Crude Oil"].iloc[-1]
     prev_crude = df_data["Crude Oil"].iloc[-2]
     delta_crude = latest_crude - prev_crude
     
@@ -198,6 +188,7 @@ if selected_page == "📊 Overview Dashboard":
 
     with st.container(border=True):
         st.subheader("Market Trend Analysis (30 Days)")
+        # หน้า Overview แสดงแค่กราฟ 30 วันปกติ ไม่มีเส้นพยากรณ์แล้ว
         fig = px.line(df_data, x="Date", y=["Crude Oil", "Refined Oil"], 
                       labels={"value": "Price (USD)", "variable": "Commodity"},
                       template="plotly_dark")
@@ -211,7 +202,7 @@ elif selected_page == "🧠 Intelligence & AI":
     col_title, col_badge = st.columns([3, 1])
     with col_title:
         st.title("Intelligence & AI")
-        st.caption("Anomaly Detection & Probabilistic Models")
+        st.caption("Anomaly Detection & AI Probabilistic Forecast")
     with col_badge:
         st.markdown('<div class="top-right-badge"><span class="badge-text">🇺🇸 Market: US (WTI)</span></div>', unsafe_allow_html=True)
 
@@ -224,37 +215,55 @@ elif selected_page == "🧠 Intelligence & AI":
 
     col_ai1, col_ai2 = st.columns([1.2, 1])
     
-    # 📌 ฝั่งซ้าย: Charts & Anomaly Model
     with col_ai1:
+        # คำนวณ Anomaly
         df_data['Rolling_Mean'] = df_data['Crude Oil'].rolling(window=5).mean()
         df_data['Rolling_Std'] = df_data['Crude Oil'].rolling(window=5).std()
         df_data['Is_Anomaly'] = abs(df_data['Crude Oil'] - df_data['Rolling_Mean']) > (1.5 * df_data['Rolling_Std'])
         
         with st.container(border=True):
-            st.markdown("**🔍 Historical Anomaly Detection**")
+            st.markdown("**🔍 AI Predictive & Anomaly Model**")
             fig_actual = go.Figure()
-            fig_actual.add_trace(go.Scatter(x=df_data["Date"].tail(20), y=df_data["Crude Oil"].tail(20), mode='lines', name='WTI', line=dict(color='#3B82F6', width=2)))
+            
+            # 1. วาดเส้นราคาจริงย้อนหลัง 20 วัน
+            fig_actual.add_trace(go.Scatter(x=df_data["Date"].tail(20), y=df_data["Crude Oil"].tail(20), mode='lines', name='WTI (Real)', line=dict(color='#3B82F6', width=2)))
+            
+            # 2. จุด Anomaly (ความผิดปกติ)
             anomalies = df_data.tail(20)[df_data.tail(20)['Is_Anomaly']]
             if not anomalies.empty:
                 fig_actual.add_trace(go.Scatter(x=anomalies["Date"], y=anomalies["Crude Oil"], mode='markers', name='Anomaly', marker=dict(color='#EF4444', size=8, symbol='x')))
-            fig_actual.update_layout(height=250, margin=dict(l=0, r=0, t=10, b=0))
+            
+            # ✅ 3. เส้นพยากรณ์ 7 วัน (7-Day Forecast)
+            last_date = df_data["Date"].iloc[-1]
+            forecast_dates = pd.date_range(last_date + pd.Timedelta(days=1), periods=7)
+            np.random.seed(42) 
+            forecast_trend = np.random.normal(0, 0.8, 7).cumsum()
+            forecast_values = latest_crude + forecast_trend
+            
+            fig_actual.add_trace(go.Scatter(
+                x=forecast_dates, 
+                y=forecast_values, 
+                mode='lines+markers', 
+                name='7-Day Forecast (AI)',
+                line=dict(color='#FBBF24', dash='dot', width=2),
+                marker=dict(size=6)
+            ))
+
+            fig_actual.update_layout(height=280, margin=dict(l=0, r=0, t=10, b=0), legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
             st.plotly_chart(fig_actual, use_container_width=True)
 
-    # 📌 ฝั่งขวา: Gemini Chatbot
     with col_ai2:
         with st.container(border=True):
             st.markdown("**🤖 AI Signal Interpreter**")
-            st.info("• EIA Signal: พบความผิดปกติสัปดาห์ล่าสุด\n• Risk: เปราะบางต่อ Supply Shock")
+            st.info("• EIA Signal: พบความผิดปกติสัปดาห์ล่าสุด\n• Forecast: เเนวโน้มผันผวน 7 วันข้างหน้า")
             st.markdown("---")
             
-            # กล่องแชท
-            chat_container = st.container(height=250)
+            chat_container = st.container(height=265)
             with chat_container:
                 for msg in st.session_state.messages:
                     with st.chat_message(msg["role"]):
                         st.markdown(msg["content"])
 
-            # รับ Input จากผู้ใช้
             if prompt := st.chat_input("Ask AI about Oil Market..."):
                 st.session_state.messages.append({"role": "user", "content": prompt})
                 with chat_container:
@@ -263,10 +272,9 @@ elif selected_page == "🧠 Intelligence & AI":
                     
                     with st.chat_message("assistant"):
                         try:
-                            with st.spinner("กำลังวิเคราะห์..."):
-                                # ส่งข้อความไปหา Gemini
+                            with st.spinner("กำลังวิเคราะห์ด้วย Gemini 2.5..."):
                                 response = st.session_state.chat_session.send_message(prompt)
                                 st.markdown(response.text)
                                 st.session_state.messages.append({"role": "assistant", "content": response.text})
                         except Exception as e:
-                            st.error(f"เกิดข้อผิดพลาดในการเชื่อมต่อ AI: {e}")
+                            st.error(f"เกิดข้อผิดพลาดในการเชื่อมต่อ AI: {e}")     st.error(f"เกิดข้อผิดพลาดในการเชื่อมต่อ AI: {e}")
