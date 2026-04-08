@@ -329,7 +329,7 @@ elif selected_page == "🧪 Backtest Lab":
         # เส้นที่ AI ทาย (Predicted)
         fig_bt.add_trace(go.Scatter(
             x=test_set["Date"], y=simulated_preds,
-            mode='lines+markers', name='AI Predicted Path',
+            mode='lines+markers', name='Predicted Path',
             line=dict(color='#10B981', dash='dash', width=3),
             marker=dict(size=8, symbol='x')
         ))
