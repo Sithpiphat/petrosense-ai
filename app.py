@@ -277,4 +277,4 @@ elif selected_page == "🧠 Intelligence & AI":
                                 st.markdown(response.text)
                                 st.session_state.messages.append({"role": "assistant", "content": response.text})
                         except Exception as e:
-                            st.error(f"เกิดข้อผิดพลาดในการเชื่อมต่อ AI: {e}")     st.error(f"เกิดข้อผิดพลาดในการเชื่อมต่อ AI: {e}")
+                            st.error(f"เกิดข้อผิดพลาดในการเชื่อมต่อ AI: {e}")
