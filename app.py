@@ -64,7 +64,7 @@ st.markdown("""
 # 🔑 2. ฝัง API KEY ต่างๆ
 # ==========================================
 MY_EIA_API_KEY = "DXB0f1v0nVrAqZxpRcmgKkB2RKuOIih1V1byRnQO"
-MY_GEMINI_API_KEY = "AIzaSyCxVLLz_SuzRNuWZnyk8RF_dnNWKUTmo-o"
+MY_GEMINI_API_KEY = "AIzaSyClzJuV18ixsH00s3seG0GHpVEo03-_UPc"
 
 # ==========================================
 # 🤖 3. ตั้งค่า AI Model (Gemini 2.5)
